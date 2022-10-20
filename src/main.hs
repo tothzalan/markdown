@@ -33,7 +33,11 @@ matchLine line
   | isPrefixOf "-" line   = createUList line
   | isPrefixOf ">" line   = createBlockquote line
   | isNumber (line !! 0) && (line !! 1) == '.' = createOList line
+  | checkIfLink line = createLink line
   | otherwise = createParagraph line
+  where
+    checkIfLink line = elem '[' line && elem ']' line
+      && elem '(' line && elem ')' line
 
 
 -- Generate HTML from tags
@@ -43,7 +47,9 @@ getTag (Header n l)   =
 getTag (Paragraph l)  = "<p>" ++ l ++ "</p>"
 getTag (Unordered l)  = "<li>" ++ l ++ "</li>"
 getTag (Ordered l)    = "<li>" ++ l ++ "</li>"
-getTag (Blockquote l) = "<blockquote><p>" ++ l ++ "</p></blockqoute>"
+getTag (Blockquote l) = "<blockquote><p>" ++ l ++ "</p></blockquote>"
+getTag (Link t l)     = "<a href='" ++ l ++ "'>" ++ t ++ "</a>"
+getTag (Image t l)    = "<img src='" ++ l ++ "'>" ++ t ++ "</img>"
 getTag HR             = "<hr/>"
 
 -- Parse tags
@@ -68,3 +74,24 @@ createOList line = (Ordered (drop 2 line))
 
 createBlockquote :: String -> Line
 createBlockquote line = (Blockquote (drop 1 line))
+
+createLink :: String -> Line
+createLink line = ((isImage line) (getText line [] False) (getLink line [] False))
+  where
+    isImage line
+      | head line == '!' = Image
+      | otherwise        = Link
+    getText [] acc _ = (reverse acc)
+    getText (l:ls) acc False
+      | l == '['  = getText ls acc True
+      | otherwise = getText ls acc False
+    getText (l:ls) acc True
+      | l == ']'  = (reverse acc)
+      | otherwise = getText ls (l:acc) True
+    getLink [] acc _ = (reverse  acc)
+    getLink (l:ls) acc False
+      | l == '('  = getLink ls acc True
+      | otherwise = getLink ls acc False
+    getLink (l:ls) acc True
+      | l == ')'  = (reverse acc)
+      | otherwise = getLink ls (l:acc) True
