@@ -6,7 +6,7 @@
 ###### Header 6
 ---
 Paragraph 1
-Paragraph 1
+Paragraph 2
 - Unordered list 1
 - Unordered list 2
 1. Ordered list 1

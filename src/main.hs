@@ -4,8 +4,11 @@ import Data.List
 import Data.Char
 import Control.Monad
 
---data Line = Ordered String | Unordered String | Code String
---  deriving (Show, Eq)
+data Line =
+  Header Int String | Paragraph String | Unordered String |
+  Ordered String | Blockquote String | Link String String |
+  Image String String | HR
+  deriving (Show, Eq)
 
 main = do
   args <- getArgs
@@ -15,42 +18,53 @@ main = do
     else putStr ""
   fileString <- do readFile (head args)
   let file = lines fileString
-  mapM_ interpret file
+  interpret file
 
-interpret :: String -> IO ()
-interpret line
-  | isPrefixOf "#" line = putStrLn (createHeader line (headerSize line))
-  | isPrefixOf "---" line = putStrLn "<hr/>"
-  | isPrefixOf "-" line = putStrLn (createUList line)
-  | isPrefixOf ">" line = putStrLn (createBlockQuote line)
-  | otherwise = putStrLn ("<p>" ++ line ++ "</p>")
+interpret :: [String] -> IO ()
+interpret lines = mapM_  (\x -> putStrLn (getTag x)) (reverse (magic lines []))
+  where
+    magic []        acc = acc
+    magic (line:ls) acc = magic ls ((matchLine line):acc)
 
-tagStart :: String -> String
-tagStart tag = "<" ++ tag ++ ">"
+matchLine :: String -> Line
+matchLine line
+  | isPrefixOf "#" line   = createHeader line
+  | isPrefixOf "---" line = HR
+  | isPrefixOf "-" line   = createUList line
+  | isPrefixOf ">" line   = createBlockquote line
+  | isNumber (line !! 0) && (line !! 1) == '.' = createOList line
+  | otherwise = createParagraph line
 
-tagEnd :: String -> String
-tagEnd tag = "</" ++ tag ++ ">"
 
-headerSize :: String -> Int
-headerSize line = count line 0 where
-  count []     acc = acc
-  count (l:ls) acc
-    | l == '#'  = count ls (acc+1)
-    | otherwise = count ls acc
+-- Generate HTML from tags
+getTag :: Line -> String
+getTag (Header n l)   =
+  ("<h" ++ [intToDigit n] ++ ">") ++ l ++ ("</h" ++ [intToDigit n] ++ ">")
+getTag (Paragraph l)  = "<p>" ++ l ++ "</p>"
+getTag (Unordered l)  = "<li>" ++ l ++ "</li>"
+getTag (Ordered l)    = "<li>" ++ l ++ "</li>"
+getTag (Blockquote l) = "<blockquote><p>" ++ l ++ "</p></blockqoute>"
+getTag HR             = "<hr/>"
 
-createHeader :: String -> Int -> String
-createHeader line n
-  | n < 7 = (tagStart' "h" n) ++ drop n line ++ (tagEnd' "h" n)
-  | otherwise = (tagStart "h6") ++ drop 6 line ++ (tagEnd "h6") where
-  tagStart' :: String -> Int -> String
-  tagStart' tag num = tagStart $ "h" ++ (intToDigit num):[]
-  tagEnd' :: String -> Int -> String
-  tagEnd' tag num = tagEnd $ "h" ++ (intToDigit num):[]
+-- Parse tags
+createHeader :: String -> Line
+createHeader line
+  | (hSize line 0) < 7 = (Header (hSize line 0) (drop (hSize line 0) line))
+  | otherwise = (Header 6 (drop 6 line))
+    where
+      hSize []     acc = acc
+      hSize (l:ls) acc
+        | l == '#'  = hSize ls (acc+1)
+        | otherwise = acc
 
-createUList :: String -> String
-createUList line = "<li>" ++ drop 1 line ++ "</li>"
+createParagraph :: String -> Line
+createParagraph line = (Paragraph line)
 
-createBlockQuote :: String -> String
-createBlockQuote line = (tagStart "blockquote") ++
-  (tagStart "p") ++ drop 1 line ++
-  (tagEnd "p") ++ (tagEnd "blockquote")
+createUList :: String -> Line
+createUList line = (Unordered (drop 1 line))
+
+createOList :: String -> Line
+createOList line = (Ordered (drop 2 line))
+
+createBlockquote :: String -> Line
+createBlockquote line = (Blockquote (drop 1 line))
