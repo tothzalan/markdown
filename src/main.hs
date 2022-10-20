@@ -49,7 +49,7 @@ getTag (Unordered l)  = "<li>" ++ l ++ "</li>"
 getTag (Ordered l)    = "<li>" ++ l ++ "</li>"
 getTag (Blockquote l) = "<blockquote><p>" ++ l ++ "</p></blockquote>"
 getTag (Link t l)     = "<a href='" ++ l ++ "'>" ++ t ++ "</a>"
-getTag (Image t l)    = "<img src='" ++ l ++ "'>" ++ t ++ "</img>"
+getTag (Image t l)    = "<img src='" ++ l ++ "' alt='" ++ t ++ "'/>"
 getTag HR             = "<hr/>"
 
 -- Parse tags
