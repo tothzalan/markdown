@@ -7,7 +7,7 @@ import Control.Monad
 data Line =
   Header Int String | Paragraph String | Unordered String |
   Ordered String | Blockquote String | Link String String |
-  Image String String | HR
+  Image String String | HR | CodeBlock String
   deriving (Show, Eq)
 
 main = do
@@ -23,6 +23,7 @@ main = do
 interpret :: [String] -> IO ()
 interpret lines = mapM_  (\x -> putStrLn (getTag x)) (reverse (magic lines []))
   where
+    magic :: [String] -> [Line] -> [Line]
     magic []        acc = acc
     magic (line:ls) acc = magic ls ((matchLine line):acc)
 
@@ -34,11 +35,11 @@ matchLine line
   | isPrefixOf ">" line   = createBlockquote line
   | isNumber (line !! 0) && (line !! 1) == '.' = createOList line
   | checkIfLink line = createLink line
+  | isPrefixOf "```" line  = createCodeBlock line
   | otherwise = createParagraph line
   where
     checkIfLink line = elem '[' line && elem ']' line
       && elem '(' line && elem ')' line
-
 
 -- Generate HTML from tags
 getTag :: Line -> String
@@ -51,6 +52,7 @@ getTag (Blockquote l) = "<blockquote><p>" ++ l ++ "</p></blockquote>"
 getTag (Link t l)     = "<a href='" ++ l ++ "'>" ++ t ++ "</a>"
 getTag (Image t l)    = "<img src='" ++ l ++ "' alt='" ++ t ++ "'/>"
 getTag HR             = "<hr/>"
+getTag (CodeBlock l)     = l
 
 -- Parse tags
 createHeader :: String -> Line
@@ -95,3 +97,9 @@ createLink line = ((isImage line) (getText line [] False) (getLink line [] False
     getLink (l:ls) acc True
       | l == ')'  = (reverse acc)
       | otherwise = getLink ls (l:acc) True
+
+createCodeBlock :: String -> Line
+createCodeBlock line
+  | line == "```"         = (CodeBlock "</code></pre>")
+  | isPrefixOf "```" line = (CodeBlock "<code><pre>")
+  | otherwise             = (CodeBlock line)
