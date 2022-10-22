@@ -20,3 +20,4 @@ Random string with *italics*
   add :: Num a => a -> a -> a
   add = (+)
 ```
+text outside of code block
