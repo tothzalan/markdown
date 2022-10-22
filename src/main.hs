@@ -25,21 +25,24 @@ interpret lines = mapM_  (\x -> putStrLn (getTag x)) (reverse (magic lines []))
   where
     magic :: [String] -> [Line] -> [Line]
     magic []        acc = acc
-    magic (line:ls) acc = magic ls ((matchLine line):acc)
+    magic (line:ls) acc = magic ls ((matchLine line acc):acc)
 
-matchLine :: String -> Line
-matchLine line
+matchLine :: String -> [Line] -> Line
+matchLine line acc
   | isPrefixOf "#" line   = createHeader line
   | isPrefixOf "---" line = HR
   | isPrefixOf "-" line   = createUList line
   | isPrefixOf ">" line   = createBlockquote line
   | isNumber (line !! 0) && (line !! 1) == '.' = createOList line
   | checkIfLink line = createLink line
+  | isCodeBlock (head acc) = createCodeBlock line
   | isPrefixOf "```" line  = createCodeBlock line
   | otherwise = createParagraph line
   where
     checkIfLink line = elem '[' line && elem ']' line
       && elem '(' line && elem ')' line
+    isCodeBlock (CodeBlock _) = True
+    isCodeBlock _             = False
 
 -- Generate HTML from tags
 getTag :: Line -> String
