@@ -60,13 +60,10 @@ getTag (CodeBlock l)     = l
 -- Parse tags
 createHeader :: String -> Line
 createHeader line
-  | (hSize line 0) < 7 = (Header (hSize line 0) (drop (hSize line 0) line))
+  | (hSize line) < 7 = (Header (hSize line) (drop (hSize line) line))
   | otherwise          = (Header 6 (drop 6 line))
     where
-      hSize []     acc = acc
-      hSize (l:ls) acc
-        | l == '#'  = hSize ls (acc+1)
-        | otherwise = acc
+      hSize = length . takeWhile (=='#')
 
 createParagraph :: String -> Line
 createParagraph line = (Paragraph line)
@@ -81,25 +78,13 @@ createBlockquote :: String -> Line
 createBlockquote line = (Blockquote $ drop 1 line)
 
 createLink :: String -> Line
-createLink line = ((isImage line) (getText line [] False) (getLink line [] False))
+createLink line = ((isImage line) (getText line) (getLink line))
   where
     isImage line
       | head line == '!' = Image
       | otherwise        = Link
-    getText [] acc _ = (reverse acc)
-    getText (l:ls) acc False
-      | l == '['  = getText ls acc True
-      | otherwise = getText ls acc False
-    getText (l:ls) acc True
-      | l == ']'  = (reverse acc)
-      | otherwise = getText ls (l:acc) True
-    getLink [] acc _ = (reverse  acc)
-    getLink (l:ls) acc False
-      | l == '('  = getLink ls acc True
-      | otherwise = getLink ls acc False
-    getLink (l:ls) acc True
-      | l == ')'  = (reverse acc)
-      | otherwise = getLink ls (l:acc) True
+    getText = tail . takeWhile (/=']') . dropWhile (/='[')
+    getLink = tail . takeWhile (/=')') . dropWhile (/='(')
 
 createCodeBlock :: String -> Line
 createCodeBlock line
