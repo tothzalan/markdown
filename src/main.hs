@@ -21,11 +21,12 @@ main = do
   interpret file
 
 interpret :: [String] -> IO ()
-interpret lines = mapM_  (putStrLn . getTag) $ reverse . magic [] $ lines
+interpret lines = mapM_  (putStrLn . getTag) (magic lines)
   where
-    magic :: [Line] -> [String] -> [Line]
-    magic acc []        = acc
-    magic acc (line:ls) = magic ((matchLine line acc):acc) ls
+    magic :: [String] -> [Line]
+    magic = reverse . foldl (\acc x -> (matchLine x acc):acc) []
+    
+
 
 matchLine :: String -> [Line] -> Line
 matchLine line acc
