@@ -21,11 +21,11 @@ main = do
   interpret file
 
 interpret :: [String] -> IO ()
-interpret lines = mapM_  (\x -> putStrLn (getTag x)) (reverse (magic lines []))
+interpret lines = mapM_  (putStrLn . getTag) $ reverse . magic [] $ lines
   where
-    magic :: [String] -> [Line] -> [Line]
-    magic []        acc = acc
-    magic (line:ls) acc = magic ls ((matchLine line acc):acc)
+    magic :: [Line] -> [String] -> [Line]
+    magic acc []        = acc
+    magic acc (line:ls) = magic ((matchLine line acc):acc) ls
 
 matchLine :: String -> [Line] -> Line
 matchLine line acc
@@ -61,7 +61,7 @@ getTag (CodeBlock l)     = l
 createHeader :: String -> Line
 createHeader line
   | (hSize line 0) < 7 = (Header (hSize line 0) (drop (hSize line 0) line))
-  | otherwise = (Header 6 (drop 6 line))
+  | otherwise          = (Header 6 (drop 6 line))
     where
       hSize []     acc = acc
       hSize (l:ls) acc
@@ -72,13 +72,13 @@ createParagraph :: String -> Line
 createParagraph line = (Paragraph line)
 
 createUList :: String -> Line
-createUList line = (Unordered (drop 1 line))
+createUList line = (Unordered $ drop 1 line)
 
 createOList :: String -> Line
-createOList line = (Ordered (drop 2 line))
+createOList line = (Ordered $ drop 2 line)
 
 createBlockquote :: String -> Line
-createBlockquote line = (Blockquote (drop 1 line))
+createBlockquote line = (Blockquote $ drop 1 line)
 
 createLink :: String -> Line
 createLink line = ((isImage line) (getText line [] False) (getLink line [] False))
