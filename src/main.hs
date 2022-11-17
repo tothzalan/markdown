@@ -25,25 +25,24 @@ interpret lines = mapM_  (putStrLn . getTag) (magic lines)
   where
     magic :: [String] -> [Line]
     magic = reverse . foldl (\acc x -> (matchLine x acc):acc) []
-    
 
+isCodeBlock (CodeBlock _) = True
+isCodeBlock _             = False
 
 matchLine :: String -> [Line] -> Line
+matchLine ('#' : line) _ = createHeader line
+matchLine ('-' : ' ' : line) _ = createUList line
+matchLine ('>' : ' ' : line) _ = createBlockquote line
+matchLine ('`' : '`' : '`' : line) acc = createCodeBlock line acc
+matchLine ('-' : '-' : '-' : line) _ = HR
 matchLine line acc
-  | isPrefixOf "#" line   = createHeader line
-  | isPrefixOf "---" line = HR
-  | isPrefixOf "-" line   = createUList line
-  | isPrefixOf ">" line   = createBlockquote line
+  | isCodeBlock (head acc) = CodeBlock line
   | isNumber (line !! 0) && (line !! 1) == '.' = createOList line
   | checkIfLink line = createLink line
-  | isCodeBlock (head acc) = createCodeBlock line
-  | isPrefixOf "```" line  = createCodeBlock line
   | otherwise = createParagraph line
   where
     checkIfLink line = elem '[' line && elem ']' line
       && elem '(' line && elem ')' line
-    isCodeBlock (CodeBlock _) = True
-    isCodeBlock _             = False
 
 -- Generate HTML from tags
 getTag :: Line -> String
@@ -70,13 +69,13 @@ createParagraph :: String -> Line
 createParagraph line = (Paragraph line)
 
 createUList :: String -> Line
-createUList line = (Unordered $ drop 1 line)
+createUList line = (Unordered $ line)
 
 createOList :: String -> Line
 createOList line = (Ordered $ drop 2 line)
 
 createBlockquote :: String -> Line
-createBlockquote line = (Blockquote $ drop 1 line)
+createBlockquote line = (Blockquote $ line)
 
 createLink :: String -> Line
 createLink line = ((isImage line) (getText line) (getLink line))
@@ -87,8 +86,9 @@ createLink line = ((isImage line) (getText line) (getLink line))
     getText = tail . takeWhile (/=']') . dropWhile (/='[')
     getLink = tail . takeWhile (/=')') . dropWhile (/='(')
 
-createCodeBlock :: String -> Line
-createCodeBlock line
-  | line == "```"         = (CodeBlock "</code></pre>")
-  | isPrefixOf "```" line = (CodeBlock "<code><pre>")
-  | otherwise             = (CodeBlock line)
+createCodeBlock :: String -> [Line] -> Line
+createCodeBlock line acc
+  | odd (count acc) = CodeBlock "</code></pre>"
+  | otherwise       = CodeBlock "<code><pre>"
+  where
+    count = length . filter (isCodeBlock)
