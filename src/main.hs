@@ -6,7 +6,7 @@ import Control.Monad
 
 data Line =
   Header Int String | Paragraph String | Unordered String |
-  Ordered String | Blockquote String | Link String String |
+  Ordered Int String | Blockquote String | Link String String |
   Image String String | HR | CodeBlock String
   deriving (Show, Eq)
 
@@ -38,7 +38,7 @@ matchLine ('-' : '-' : '-' : line) _ = HR
 matchLine line acc
   | isCodeBlock (head acc) &&
     (head acc) /= (CodeBlock "</code></pre>") = CodeBlock line
-  | isNumber (line !! 0) && (line !! 1) == '.' = createOList line
+  | isNumber (line !! 0) && (line !! 1) == '.' = createOList (digitToInt (line !! 0)) line
   | checkIfLink line = createLink line
   | otherwise = createParagraph line
   where
@@ -50,8 +50,8 @@ getTag :: Line -> String
 getTag (Header n l)   =
   ("<h" ++ [intToDigit n] ++ ">") ++ l ++ ("</h" ++ [intToDigit n] ++ ">")
 getTag (Paragraph l)  = "<p>" ++ l ++ "</p>"
-getTag (Unordered l)  = "<li>" ++ l ++ "</li>"
-getTag (Ordered l)    = "<li>" ++ l ++ "</li>"
+getTag (Unordered l)  = "<ul><li>" ++ l ++ "</li></ul>"
+getTag (Ordered n l)    = "<ol start='" ++ show n ++ "'><li>" ++ l ++ "</li></ol>"
 getTag (Blockquote l) = "<blockquote><p>" ++ l ++ "</p></blockquote>"
 getTag (Link t l)     = "<a href='" ++ l ++ "'>" ++ t ++ "</a>"
 getTag (Image t l)    = "<img src='" ++ l ++ "' alt='" ++ t ++ "'/>"
@@ -72,8 +72,8 @@ createParagraph line = (Paragraph line)
 createUList :: String -> Line
 createUList line = (Unordered $ line)
 
-createOList :: String -> Line
-createOList line = (Ordered $ drop 2 line)
+createOList :: Int -> String -> Line
+createOList n line = (Ordered n $ drop 2 line)
 
 createBlockquote :: String -> Line
 createBlockquote line = (Blockquote $ line)
