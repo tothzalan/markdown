@@ -36,7 +36,8 @@ matchLine ('>' : ' ' : line) _ = createBlockquote line
 matchLine ('`' : '`' : '`' : line) acc = createCodeBlock line acc
 matchLine ('-' : '-' : '-' : line) _ = HR
 matchLine line acc
-  | isCodeBlock (head acc) = CodeBlock line
+  | isCodeBlock (head acc) &&
+    (head acc) /= (CodeBlock "</code></pre>") = CodeBlock line
   | isNumber (line !! 0) && (line !! 1) == '.' = createOList line
   | checkIfLink line = createLink line
   | otherwise = createParagraph line
@@ -61,9 +62,9 @@ getTag (CodeBlock l)     = l
 createHeader :: String -> Line
 createHeader line
   | (hSize line) < 7 = (Header (hSize line) (drop (hSize line) line))
-  | otherwise          = (Header 6 (drop 6 line))
+  | otherwise        = (Header 6 (drop 6 line))
     where
-      hSize = length . takeWhile (=='#')
+      hSize = (+1) . length . takeWhile (=='#')
 
 createParagraph :: String -> Line
 createParagraph line = (Paragraph line)
@@ -88,7 +89,8 @@ createLink line = ((isImage line) (getText line) (getLink line))
 
 createCodeBlock :: String -> [Line] -> Line
 createCodeBlock line acc
-  | odd (count acc) = CodeBlock "</code></pre>"
-  | otherwise       = CodeBlock "<code><pre>"
+  | nStart acc == nEnd acc = CodeBlock "<code><pre>"
+  | otherwise              = CodeBlock "</code></pre>"
   where
-    count = length . filter (isCodeBlock)
+    nStart = length . filter (==(CodeBlock "<code><pre>"))
+    nEnd   = length . filter (==(CodeBlock "</code></pre>"))
