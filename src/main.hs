@@ -14,7 +14,6 @@ main = do
   args <- getArgs
   if length args /= 1
     then error "Wrong number of arguments!"
-    --else putStrLn ("Interpreting: " ++ head args)
     else putStr ""
   fileString <- do readFile (head args)
   let file = lines fileString
@@ -24,7 +23,7 @@ interpret :: [String] -> IO ()
 interpret lines = mapM_  (putStrLn . getTag) (magic lines)
   where
     magic :: [String] -> [Line]
-    magic = reverse . foldl (\acc x -> (matchLine x acc):acc) []
+    magic = foldr (\x acc -> (matchLine x acc):acc) []
 
 isCodeBlock (CodeBlock _) = True
 isCodeBlock _             = False
@@ -37,10 +36,10 @@ matchLine ('`' : '`' : '`' : line) acc = createCodeBlock line acc
 matchLine ('-' : '-' : '-' : line) _ = HR
 matchLine line acc
   | isCodeBlock (head acc) &&
-    (head acc) /= (CodeBlock "</code></pre>") = CodeBlock line
+    (head acc) /= (CodeBlock "</code></pre>")  = CodeBlock line
   | isNumber (line !! 0) && (line !! 1) == '.' = createOList (digitToInt (line !! 0)) line
   | checkIfLink line = createLink line
-  | otherwise = createParagraph line
+  | otherwise        = createParagraph line
   where
     checkIfLink line = elem '[' line && elem ']' line
       && elem '(' line && elem ')' line
@@ -51,18 +50,18 @@ getTag (Header n l)   =
   ("<h" ++ [intToDigit n] ++ ">") ++ l ++ ("</h" ++ [intToDigit n] ++ ">")
 getTag (Paragraph l)  = "<p>" ++ l ++ "</p>"
 getTag (Unordered l)  = "<ul><li>" ++ l ++ "</li></ul>"
-getTag (Ordered n l)    = "<ol start='" ++ show n ++ "'><li>" ++ l ++ "</li></ol>"
+getTag (Ordered n l)  = "<ol start='" ++ show n ++ "'><li>" ++ l ++ "</li></ol>"
 getTag (Blockquote l) = "<blockquote><p>" ++ l ++ "</p></blockquote>"
 getTag (Link t l)     = "<a href='" ++ l ++ "'>" ++ t ++ "</a>"
 getTag (Image t l)    = "<img src='" ++ l ++ "' alt='" ++ t ++ "'/>"
 getTag HR             = "<hr/>"
-getTag (CodeBlock l)     = l
+getTag (CodeBlock l)  = l
 
 -- Parse tags
 createHeader :: String -> Line
 createHeader line
   | (hSize line) < 7 = (Header (hSize line) (drop (hSize line) line))
-  | otherwise        = (Header 6 (drop 6 line))
+  | otherwise        = (Header 6 (drop (hSize line) line))
     where
       hSize = (+1) . length . takeWhile (=='#')
 
