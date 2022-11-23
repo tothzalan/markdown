@@ -20,34 +20,35 @@ main = do
   interpret file
 
 interpret :: [String] -> IO ()
-interpret lines = mapM_  (putStrLn . getTag) (magic lines)
+interpret = mapM_ (putStrLn . getTag) . matchLines
   where
-    magic :: [String] -> [Line]
-    magic = foldr (\x acc -> (matchLine x acc):acc) []
+    matchLines = reverse . foldl (\acc x -> (matchLine x acc):acc) []
 
 isCodeBlock (CodeBlock _) = True
 isCodeBlock _             = False
 
 matchLine :: String -> [Line] -> Line
-matchLine ('#' : line) _ = createHeader line
-matchLine ('-' : ' ' : line) _ = createUList line
-matchLine ('>' : ' ' : line) _ = createBlockquote line
+matchLine ('#' : line)             _   = createHeader line
+matchLine ('-' : ' ' : line)       _   = Unordered line
+matchLine ('>' : ' ' : line)       _   = Blockquote line
 matchLine ('`' : '`' : '`' : line) acc = createCodeBlock line acc
-matchLine ('-' : '-' : '-' : line) _ = HR
+matchLine ('-' : '-' : '-' : line) _   = HR
 matchLine line acc
-  | isCodeBlock (head acc) &&
-    (head acc) /= (CodeBlock "</code></pre>")  = CodeBlock line
-  | isNumber (line !! 0) && (line !! 1) == '.' = createOList (digitToInt (line !! 0)) line
-  | checkIfLink line = createLink line
-  | otherwise        = createParagraph line
+  | checkCodeBlock = CodeBlock line
+  | isNumber (line !! 0) && (line !! 1) == '.' =
+    createOList (digitToInt (line !! 0)) line
+  | checkIfLink = createLink line
+  | otherwise = Paragraph line
   where
-    checkIfLink line = elem '[' line && elem ']' line
-      && elem '(' line && elem ')' line
+    checkIfLink = elem '[' line && elem ']' line &&
+      elem '(' line && elem ')' line
+    checkCodeBlock = isCodeBlock (head acc) &&
+      (head acc) /= (CodeBlock "</code></pre>")
 
 -- Generate HTML from tags
 getTag :: Line -> String
 getTag (Header n l)   =
-  ("<h" ++ [intToDigit n] ++ ">") ++ l ++ ("</h" ++ [intToDigit n] ++ ">")
+  ("<h" ++ (show n) ++ ">") ++ l ++ ("</h" ++ (show n) ++ ">")
 getTag (Paragraph l)  = "<p>" ++ l ++ "</p>"
 getTag (Unordered l)  = "<ul><li>" ++ l ++ "</li></ul>"
 getTag (Ordered n l)  = "<ol start='" ++ show n ++ "'><li>" ++ l ++ "</li></ol>"
@@ -61,35 +62,26 @@ getTag (CodeBlock l)  = l
 createHeader :: String -> Line
 createHeader line
   | (hSize line) < 7 = (Header (hSize line) (drop (hSize line) line))
-  | otherwise        = (Header 6 (drop (hSize line) line))
+  | otherwise        = (Header 6 (drop 6 line))
     where
       hSize = (+1) . length . takeWhile (=='#')
 
-createParagraph :: String -> Line
-createParagraph line = (Paragraph line)
-
-createUList :: String -> Line
-createUList line = (Unordered $ line)
-
 createOList :: Int -> String -> Line
-createOList n line = (Ordered n $ drop 2 line)
-
-createBlockquote :: String -> Line
-createBlockquote line = (Blockquote $ line)
+createOList n = Ordered n . drop 3
 
 createLink :: String -> Line
-createLink line = ((isImage line) (getText line) (getLink line))
+createLink line = (isImage line) (getText line) (getLink line)
   where
-    isImage line
-      | head line == '!' = Image
-      | otherwise        = Link
+    isImage ('!' : _) = Image
+    isImage _         = Link
     getText = tail . takeWhile (/=']') . dropWhile (/='[')
     getLink = tail . takeWhile (/=')') . dropWhile (/='(')
 
 createCodeBlock :: String -> [Line] -> Line
 createCodeBlock line acc
-  | nStart acc == nEnd acc = CodeBlock "<code><pre>"
-  | otherwise              = CodeBlock "</code></pre>"
+  | count "<code><pre>" == count "</code></pre>" =
+    CodeBlock "<code><pre>"
+  | otherwise =
+    CodeBlock "</code></pre>"
   where
-    nStart = length . filter (==(CodeBlock "<code><pre>"))
-    nEnd   = length . filter (==(CodeBlock "</code></pre>"))
+    count s = length $ filter (==(CodeBlock s)) acc
