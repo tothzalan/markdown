@@ -1,5 +1,7 @@
 module Lib
-    ( interpret 
+    ( Line
+    , interpret
+    , matchLine
     ) where
 
 import Data.Char
