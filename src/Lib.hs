@@ -1,8 +1,8 @@
-import System.IO
-import System.Environment
-import Data.List
+module Lib
+    ( interpret 
+    ) where
+
 import Data.Char
-import Control.Monad
 
 data Line =
   Header Int String | Paragraph String | Unordered String |
@@ -10,29 +10,21 @@ data Line =
   Image String String | HR | CodeBlock String
   deriving (Show, Eq)
 
-main = do
-  args <- getArgs
-  if length args /= 1
-    then error "Wrong number of arguments!"
-    else putStr ""
-  fileString <- do readFile (head args)
-  let file = lines fileString
-  interpret file
-
 interpret :: [String] -> IO ()
 interpret = mapM_ (putStrLn . getTag) . matchLines
   where
     matchLines = reverse . foldl (\acc x -> (matchLine x acc):acc) []
 
+isCodeBlock :: Line -> Bool
 isCodeBlock (CodeBlock _) = True
 isCodeBlock _             = False
 
 matchLine :: String -> [Line] -> Line
-matchLine ('#' : line)             _   = createHeader line
-matchLine ('-' : ' ' : line)       _   = Unordered line
-matchLine ('>' : ' ' : line)       _   = Blockquote line
-matchLine ('`' : '`' : '`' : line) acc = createCodeBlock line acc
-matchLine ('-' : '-' : '-' : line) _   = HR
+matchLine ('#' : line)          _   = createHeader line
+matchLine ('-' : ' ' : line)    _   = Unordered line
+matchLine ('>' : ' ' : line)    _   = Blockquote line
+matchLine ('`' : '`' : '`' : _) acc = createCodeBlock acc
+matchLine ('-' : '-' : '-' : _) _   = HR
 matchLine line acc
   | checkCodeBlock = CodeBlock line
   | isNumber (line !! 0) && (line !! 1) == '.' =
@@ -77,8 +69,8 @@ createLink line = (isImage line) (getText line) (getLink line)
     getText = tail . takeWhile (/=']') . dropWhile (/='[')
     getLink = tail . takeWhile (/=')') . dropWhile (/='(')
 
-createCodeBlock :: String -> [Line] -> Line
-createCodeBlock line acc
+createCodeBlock :: [Line] -> Line
+createCodeBlock acc
   | count "<code><pre>" == count "</code></pre>" =
     CodeBlock "<code><pre>"
   | otherwise =
